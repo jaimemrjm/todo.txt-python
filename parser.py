@@ -8,7 +8,9 @@ class TodotxtParser:
       'description' : 'description',
       'context' : 'context',
       'project' : 'project',
-      'tags' : 'tags'
+      'tags' : 'tags',
+      'created-at': 'created',
+      'due': 'due'
   }
 
   todo_dir ="~/.todo"
@@ -29,7 +31,7 @@ class TodotxtParser:
 
   def completeTodo(self, line_number):
     line = self.getLine(line_number)
-    today = time.strftime('%Y-%m-%d') 
+    today = time.strftime('%Y-%m-%d')
     line = '\nx ' + today + ' ' + line + '\n'
     self.removeTodo(line_number)
     todo_file = open(self.getLocation('done'), 'a')
@@ -130,6 +132,8 @@ class TodotxtParser:
         self.data['todos'][index_of_similar_todo].setTracksId(remote_todo['id'])
         continue
 
+      # Mapping fields from remote_todo to local todo (new_todo)
+      # Note that remote_todo includes fields that are not saved on new_todo
       new_todo = {}
       new_todo['tracks_id'] = remote_todo['id']
       for [old_name, new_name] in self.tracks_mapping.items():
@@ -196,6 +200,13 @@ class TodotxtParser:
       # Replace spaces to underscores to avoid todo.txt limitation
     else:
       todo.setProject(data['project'].replace(' ', '_'))
+
+    # Tracks uses combined date and time for due or created date-time. Example: 2016-08-28T00:00:00+02:00
+    # but we will use date only for local todo
+    if 'due' in data:
+        todo.setDueDate(data['due'].split('T')[0])
+    if 'created' in data:
+        todo.setCreationDate(data['created'].split('T')[0])
 
     # Add parsed element to the list of todos
     self.data['todos'][next_id] = todo
