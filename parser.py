@@ -8,13 +8,14 @@ class TodotxtParser:
       'description' : 'description',
       'context' : 'context',
       'project' : 'project',
+      'tags' : 'tags'
   }
 
   todo_dir ="~/.todo"
   todo_file ="$TODO_DIR/todo.txt"
   done_file ="$TODO_DIR/done.txt"
   report_file ="$TODO_DIR/report.txt"
-  todo_actions_dir ="$TODO_DIR/actions"
+  todo_actions_dir ="~/.todo.actions.d"
 
   verbose = False
 
@@ -36,6 +37,9 @@ class TodotxtParser:
     todo_file.close()
 
   def fetchRemoteData(self):
+    '''
+    Populate remote todos, projects and contexts list
+    '''
     self.remote_todos = self.remote_client.getTodos()
     self.remote_projects = self.remote_client.getProjects()
     self.remote_contexts = self.remote_client.getContexts()
@@ -44,7 +48,7 @@ class TodotxtParser:
     todos = self.getTodos()
     for [index, todo] in todos.items():
       if todo.getDescription() == description:
-        return index 
+        return index
     return False
 
   def getTodoByTracksId(self, tracks_id):
@@ -65,7 +69,7 @@ class TodotxtParser:
 
     for project in self.getProjects():
       if project not in remote_projects and project not in added_projects:
-        if self.verbose: 
+        if self.verbose:
           print "Adding local project %s to remote Tracks instance" % project
         new_projects = True
         tracks_client.addProject({'name' : project})
@@ -80,7 +84,7 @@ class TodotxtParser:
 
     for context in self.getContexts():
       if context not in remote_contexts and context not in added_contexts:
-        if self.verbose: 
+        if self.verbose:
           print "Adding local context %s to remote Tracks instance" % context
         new_contexts = True
         tracks_client.addContext({'name' : context})
@@ -94,7 +98,7 @@ class TodotxtParser:
     for [index, todo] in todos:
       tracks_id = None
       if todo.getDescription() not in remote_todos and todo.getTracksId() == None:
-        if self.verbose: 
+        if self.verbose:
           print "Adding local todo %s to remote Tracks instance" % todo.getDescription()
         tracks_id = tracks_client.addTodo(todo)
         self.data['todos'][index].setTracksId(tracks_id)
@@ -103,15 +107,16 @@ class TodotxtParser:
           if remote_todo['id'] == todo.getTracksId():
             if todo.isDone() and remote_todo['state'] != 'completed':
               tracks_client.updateTodo(todo)
-      
+
   def importFromTracks(self, tracks_client):
-    if self.verbose: 
+    if self.verbose:
       print "Contacting remote Tracks instance"
 
     self.remote_client = tracks_client
-    self.fetchRemoteData()
+    self.fetchRemoteData() # Populate remote_todos, contexts and projects
     count = 0
     for remote_todo in self.remote_todos:
+      # Search for remote todo in local database
       index_of_local_instance = self.getTodoByTracksId(remote_todo['id'])
       if index_of_local_instance:
         if remote_todo['state'] == 'completed':
@@ -131,19 +136,28 @@ class TodotxtParser:
         count += 1
         if old_name in remote_todo:
           new_todo[new_name] = remote_todo[old_name]
+          # FIXME Workaround for bad Tracks parsing
+          if new_name == 'tags':
+             new_todo[new_name]  = []
 
       if remote_todo['state'] == 'active':
-        if self.verbose: 
+        if self.verbose:
           print "Adding active todo"
-
         self.addTodo(new_todo)
-      else:
-        if self.verbose: 
+      elif remote_todo['state'] == 'pending':
+        if 'tags' in new_todo:
+          new_todo['tags'].append('pending')
+        else:
+          new_todo['tags'] = ['pending']
+        print "Adding pending todo"
+        self.addTodo(new_todo)
+      else: # todo is already completed/done
+        if self.verbose:
           print "Adding completed todo"
         self.addTodo(new_todo, 'done')
 
     # Doing this for now as a way to detect when a remote todo is set to 'done'
-    # Not great, but /todos/done.xml takes too long to parse 
+    # Not great, but /todos/done.xml takes too long to parse
     # without some ability to limit results
     for index, local_todo in self.data['todos'].items():
       if local_todo.getTracksId() != None and not local_todo.isDone():
@@ -164,33 +178,32 @@ class TodotxtParser:
 
   def addTodo(self, data, todo_type = 'todo'):
     todo = Todo(data)
-    # Replace spaces to underscores to avoid todo.txt limitation
-    if data['project']:
-      data['project'] = data['project'].replace(' ','_')
-    if data['context']:
-      data['context'] = data['context'].replace(' ','_')
     next_id = self.getNextId()
     if todo_type == 'todo':
       todo.setDone(False)
     elif todo_type == 'done':
       todo.setDone()
       todo.setCompletedDate(time.strftime('%Y-%m-%d'))
+    if 'context' not in data:
+      todo.setContext('default')
+    else:
+      # Replace spaces to underscores to avoid todo.txt limitation
+      todo.setContext(data['context'].replace(' ', '_'))
+    if 'tracks_id' not in data:
+      todo.setTracksId(None)
+    if 'project' not in data:
+      todo.setProject('default')
+      # Replace spaces to underscores to avoid todo.txt limitation
+    else:
+      todo.setProject(data['project'].replace(' ', '_'))
+
+    # Add parsed element to the list of todos
     self.data['todos'][next_id] = todo
     self.data['ids'].append(next_id)
 
-    if 'context' not in data:
-      todo.setContext('default')
-
-    if 'tracks_id' not in data:
-      todo.setTracksId(None)
-
-    # Replace spaces to underscores to avoid todo.txt limitation
-    if todo.getContext().replace(' ','_') not in self.data['contexts']:
-      self.addContext(todo.getContext().replace(' ','_'))
+    if todo.getContext() not in self.data['contexts']:
+      self.addContext(todo.getContext())
     self.data['contexts'][data['context']].append(next_id)
-
-    if 'project' not in data:
-      data['project'] = 'default'
 
     if data['project'] not in self.data['projects']:
       self.addProject(data['project'])
@@ -203,11 +216,18 @@ class TodotxtParser:
     self.data['projects'][project] = []
 
   def makeTodoLine(self, data):
+    '''
+    Returns a line (string) that represent a todo element in todo.txt format
+    see Todo.getTextLine() method also
+    '''
     new_todo = '\n' + data['description']
     if data['context'] != None:
       new_todo += " @" + data['context']
     if data['project'] != None:
       new_todo += " +" + data['project']
+    if data['tags'] != [] and data['tags'] != None:
+      for tag in data['tags']:
+          new_todo += " +" + tag
     if 'tracks_id' in data:
       new_todo += " tid:" + data['tracks_id']
     return new_todo
@@ -232,6 +252,7 @@ class TodotxtParser:
     todos = self.data['todos'].items()
     todo_set = {}
     for [index, todo] in todos:
+      # FIXME check these comparison
       if todo_type == None:
         todo_set[index] = todo
       elif todo.isDone() == False and todo_type == 'todo':
@@ -354,15 +375,18 @@ class TodotxtParser:
     count = 0
     for [index, todo] in todos.items():
       count += 1
-      line = unicode(todo.getTextLine()).encode('utf8')
-      todo_file.write(line + '\n')
+      try:
+        line = unicode(todo.getTextLine()).encode('utf8')
+        todo_file.write(line + '\n')
+      except ValueError as e:
+        raise ValueError("line: {0}, todo.getTextLine(): {1}".format(line, todo.getTextLine()))
     todo_file.close()
 
   def setData(self, data):
     if 'todos' in data:
       for index, todo in data['todos'].items():
         data['todos'][index] = Todo(todo)
-        
+
     self.data = data
 
   def getRawData(self):
@@ -397,7 +421,7 @@ class TodotxtParser:
   def expandTodoDir(self):
     if '~' in self.todo_dir:
       self.todo_dir = self.todo_dir.replace('~', '/home/' + os.getlogin())
-    
+
   def setConfig(self, data):
     for key, value in data.items():
       setattr(self, key, value)
