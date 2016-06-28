@@ -3,8 +3,11 @@ class Todo:
   data = {}
 
   def __init__(self, data = None):
-    if data:
-      self.setData(data)
+      self.data['tags'] = []
+      self.data['created'] = None
+      self.data['due'] = None
+      if data:
+          self.setData(data)
 
   def setData(self, data):
     self.data = data
@@ -26,6 +29,24 @@ class Todo:
 
   def setContext(self, context):
     self.data['context'] = context
+
+  def setDueDate(self, date):
+      self.data['due'] = date
+
+  def getDueDate(self):
+      if 'due' in self.data:
+          return self.data['due']
+      else:
+          return None
+
+  def getCreationDate(self):
+      if 'created' in self.data:
+          return self.data['created']
+      else:
+          return None
+
+  def setCreationDate(self, date):
+      self.data['created'] = date
 
   def getTracksId(self):
     return self.data['tracks_id']
@@ -70,7 +91,11 @@ class Todo:
       line += 'x '
     if self.getCompletedDate() != None:
       line += self.getCompletedDate() + ' '
+    if self.getCreationDate() != None:
+      line += self.getCreationDate() + ' '
     line += self.getDescription()
+    if self.getDueDate() != None:
+      line += ' due:' + self.getDueDate()
     if self.getContext() != 'default':
       line += ' @' + self.getContext()
     if self.getProject() != 'default':
