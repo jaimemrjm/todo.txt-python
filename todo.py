@@ -1,4 +1,4 @@
-# Object representing a todo 
+# Object representing a todo
 class Todo:
   data = {}
 
@@ -18,8 +18,14 @@ class Todo:
   def getProject(self):
     return self.data['project']
 
+  def setProject(self, project):
+    self.data['project'] = project
+
   def getContext(self):
     return self.data['context']
+
+  def setContext(self, context):
+    self.data['context'] = context
 
   def getTracksId(self):
     return self.data['tracks_id']
@@ -36,6 +42,15 @@ class Todo:
   def setDone(self, done = True):
     self.data['done'] = done
 
+  def setTags(self, tags):
+      self.data['tags'] = tags
+
+  def getTags(self):
+      if 'tags' in self.data:
+          return self.data['tags']
+      else:
+          return []
+
   def getCompletedDate(self):
     if 'completed' in self.data:
       return self.data['completed']
@@ -46,6 +61,10 @@ class Todo:
     self.data['completed'] = date
 
   def getTextLine(self):
+    '''
+    Returns a line (string) that represent this Todo object in todo.txt format
+    see Parser.makeTodoLine(data) also
+    '''
     line = ''
     if self.isDone() == True:
       line += 'x '
@@ -55,10 +74,11 @@ class Todo:
     if self.getContext() != 'default':
       line += ' @' + self.getContext()
     if self.getProject() != 'default':
-      line += ' +' + self.getProject() 
-
+      line += ' +' + self.getProject()
+    if self.getTags() != [] and self.getTags() != None:
+        for tag in self.getTags():
+            line += ' +' + tag
     if self.getTracksId() != None:
       line += ' tid:' + self.getTracksId()
 
     return line
-
