@@ -6,6 +6,7 @@ class Todo:
       self.data['tags'] = []
       self.data['created'] = None
       self.data['due'] = None
+      self.data['threshold'] = None
       if data:
           self.setData(data)
 
@@ -36,6 +37,15 @@ class Todo:
   def getDueDate(self):
       if 'due' in self.data:
           return self.data['due']
+      else:
+          return None
+
+  def setThreshold(self, date):
+      self.data['threshold'] = date
+
+  def getThreshold(self):
+      if 'threshold' in self.data:
+          return self.data['threshold']
       else:
           return None
 
@@ -96,6 +106,8 @@ class Todo:
     line += self.getDescription()
     if self.getDueDate() != None:
       line += ' due:' + self.getDueDate()
+    if self.getThreshold() != None:
+      line += ' t:' + self.getThreshold()
     if self.getContext() != 'default':
       line += ' @' + self.getContext()
     if self.getProject() != 'default':
