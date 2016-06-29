@@ -13,8 +13,9 @@ that wasn't written in Bash but which would run on most Linux servers.
 
 Major caveats for using this library are:
 
-* It may not see much more active development.
-* I didn't implement anything with regard to Priority.
+* No more active development: this a project fork oriented-to migrate from Tracks webapp to ``todo.txt``
+* I haven't tested this code exporting ``todo.txt`` data to Tracks webapp
+* No implementation about Priority field.
 * I don't understand relative module inclusion in Python very well. There's a
   lot of appending the path of the parent directory to the paths list.
 * There might be a hard dependency on the Tracks module.
