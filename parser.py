@@ -10,7 +10,8 @@ class TodotxtParser:
       'project' : 'project',
       'tags' : 'tags',
       'created-at': 'created',
-      'due': 'due'
+      'due': 'due',
+      'show-from': 'threshold'
   }
 
   todo_dir ="~/.todo"
@@ -148,12 +149,15 @@ class TodotxtParser:
         if self.verbose:
           print "Adding active todo"
         self.addTodo(new_todo)
-      elif remote_todo['state'] == 'pending':
+      elif remote_todo['state'] == 'pending': # Waiting to finish another task
         if 'tags' in new_todo:
           new_todo['tags'].append('pending')
         else:
           new_todo['tags'] = ['pending']
         print "Adding pending todo"
+        self.addTodo(new_todo)
+      elif remote_todo['state'] == 'deferred': # Similar to pending but waiting to a date-time
+        print "Adding deferred todo"
         self.addTodo(new_todo)
       else: # todo is already completed/done
         if self.verbose:
@@ -207,6 +211,8 @@ class TodotxtParser:
         todo.setDueDate(data['due'].split('T')[0])
     if 'created' in data:
         todo.setCreationDate(data['created'].split('T')[0])
+    if 'threshold' in data:
+        todo.setThreshold(data['threshold'].split('T')[0])
 
     # Add parsed element to the list of todos
     self.data['todos'][next_id] = todo
