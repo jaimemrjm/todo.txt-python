@@ -4,7 +4,7 @@ from mock import Mock, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.abspath(__file__ )+ "/../../../"))
 
-import todotxt
+import todo as todotxt
 import tracks
 
 class TestTodotxtParser(unittest.TestCase):
