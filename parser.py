@@ -409,7 +409,7 @@ class TodotxtParser:
         for [index, todo] in todos.items():
             count += 1
             try:
-                line = unicode(todo.getTextLine()).encode("utf8")
+                line = todo.getTextLine()
                 todo_file.write(line + "\n")
             except ValueError as e:
                 raise ValueError(
